@@ -32,7 +32,17 @@ class AuthService {
   }
 
   Future<void> resetPassword(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
+    final cleanEmail = email.trim();
+
+    if (cleanEmail.isEmpty) {
+      throw Exception("Email is required");
+    }
+
+    try {
+      await _auth.sendPasswordResetEmail(email: cleanEmail);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Reset failed");
+    }
   }
 
   Future<void> logout() async {
