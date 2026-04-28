@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -11,13 +12,24 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final usernameController = TextEditingController();
 
   Future<void> register() async {
     try {
-      await AuthService().register(
+      // 1. Create user in Firebase Auth
+      final userCredential = await AuthService().register(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
+      final uid = userCredential.user!.uid;
+
+      // 2. Save extra data in Firestore
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'username': usernameController.text.trim(),
+        'email': emailController.text.trim(),
+        'createdAt': DateTime.now(),
+      });
 
       Navigator.pop(context);
     } catch (e) {
@@ -35,6 +47,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(labelText: "Username"),
+            ),
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: "Email"),
