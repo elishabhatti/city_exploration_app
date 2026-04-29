@@ -22,12 +22,14 @@ class PlaceDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Hero Image
+            // 1. Image Section
             Image.network(
               placeData['image'],
               height: 250,
               width: double.infinity,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Center(child: Icon(Icons.broken_image, size: 100)),
             ),
 
             Padding(
@@ -62,7 +64,7 @@ class PlaceDetailScreen extends StatelessWidget {
 
                   const Divider(height: 40),
 
-                  // 3. Info Section (Timings, Contact)
+                  // 3. Information Section
                   const Text(
                     "Information",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -79,7 +81,7 @@ class PlaceDetailScreen extends StatelessWidget {
 
                   const Divider(height: 40),
 
-                  // 4. Reviews Section (The "Reviews Table" View)
+                  // 4. Reviews Section
                   const Text(
                     "Reviews",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -100,9 +102,10 @@ class PlaceDetailScreen extends StatelessWidget {
                         icon: const Icon(Icons.send, color: Colors.blue),
                         onPressed: () async {
                           if (reviewController.text.isNotEmpty) {
-                            // Add to "reviews" collection
                             await FirebaseFirestore.instance
-                                .collection('reviews')
+                                .collection(
+                                  'reviews',
+                                ) // Database collection name
                                 .add({
                                   'placeId': placeId,
                                   'userId':
@@ -110,7 +113,8 @@ class PlaceDetailScreen extends StatelessWidget {
                                   'userName': FirebaseAuth
                                       .instance
                                       .currentUser!
-                                      .email, // Username for now
+                                      .email!
+                                      .split('@')[0],
                                   'comment': reviewController.text,
                                   'timestamp': FieldValue.serverTimestamp(),
                                 });
@@ -121,17 +125,30 @@ class PlaceDetailScreen extends StatelessWidget {
                     ],
                   ),
 
-                  // Reviews List from Firestore
+                  // Reviews List (Simple Filter - No Sorting needed)
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('reviews')
                         .where('placeId', isEqualTo: placeId)
-                        .orderBy('timestamp', descending: true)
+                        // .orderBy hataya hai takay index error na aye
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                      if (snapshot.hasError) {
+                        return Text("Error: ${snapshot.error}");
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
-                      var reviews = snapshot.data!.docs;
+                      }
+
+                      final reviews = snapshot.data!.docs;
+
+                      if (reviews.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Text("No reviews yet. Be the first!"),
+                        );
+                      }
+
                       return ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -139,9 +156,9 @@ class PlaceDetailScreen extends StatelessWidget {
                         itemBuilder: (context, index) {
                           var r = reviews[index].data() as Map<String, dynamic>;
                           return ListTile(
-                            leading: const Icon(Icons.account_circle),
+                            leading: const Icon(Icons.account_circle, size: 40),
                             title: Text(r['userName'] ?? 'User'),
-                            subtitle: Text(r['comment']),
+                            subtitle: Text(r['comment'] ?? ''),
                           );
                         },
                       );
