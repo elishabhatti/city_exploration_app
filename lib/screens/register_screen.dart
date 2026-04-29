@@ -1,8 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,62 +11,38 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
   final usernameController = TextEditingController();
 
-  final AuthService authService = AuthService();
-  final UserService userService = UserService();
+  final emailController = TextEditingController();
 
-  bool isLoading = false;
+  final passwordController = TextEditingController();
 
   Future<void> register() async {
-    setState(() => isLoading = true);
-
     try {
-      final email = emailController.text.trim();
-      final password = passwordController.text.trim();
-      final username = usernameController.text.trim();
-
-      // 1. Create Auth user
-      final User user = await authService.register(
-        email: email,
-        password: password,
+      final user = await AuthService().register(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
 
-      // 2. Save Firestore user data
-      await userService.createUser(
-        uid: user.uid,
-        username: username,
-        email: email,
-      );
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': usernameController.text.trim(),
+        'email': emailController.text.trim(),
+        'profilePic': null,
+        'preferences': {},
+      });
 
-      if (!mounted) return;
       Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? "Auth Error")));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Something went wrong: $e")));
-    } finally {
-      setState(() => isLoading = false);
+      ).showSnackBar(SnackBar(content: Text("Register Failed: $e")));
     }
-  }
-
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    usernameController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text("Register")),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -77,23 +52,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: usernameController,
               decoration: const InputDecoration(labelText: "Username"),
             ),
+
+            const SizedBox(height: 12),
+
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: "Email"),
             ),
+
+            const SizedBox(height: 12),
+
             TextField(
               controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(labelText: "Password"),
             ),
+
             const SizedBox(height: 20),
 
-            ElevatedButton(
-              onPressed: isLoading ? null : register,
-              child: isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text("Register"),
-            ),
+            ElevatedButton(onPressed: register, child: const Text("Register")),
           ],
         ),
       ),
