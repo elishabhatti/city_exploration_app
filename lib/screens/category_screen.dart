@@ -11,61 +11,59 @@ class CategoryScreen extends StatelessWidget {
     required this.cityName,
   });
 
-  final List<String> categories = const [
-    'Attractions',
-    'Restaurants',
-    'Hotels',
-    'Events',
+  final List<Map<String, dynamic>> categories = const [
+    {"name": "Attractions", "icon": Icons.landscape},
+    {"name": "Restaurants", "icon": Icons.restaurant},
+    {"name": "Hotels", "icon": Icons.hotel},
+    {"name": "Events", "icon": Icons.event},
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(cityName),
-      ),
-      body: Padding(
+      appBar: AppBar(title: Text("Explore $cityName")),
+      body: GridView.builder(
         padding: const EdgeInsets.all(16),
-        child: GridView.builder(
-          itemCount: categories.length,
-          gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-          ),
-          itemBuilder: (context, index) {
-            final category = categories[index];
-
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ListingsScreen(
-                      cityId: cityId,
-                      cityName: cityName,
-                      category: category,
-                    ),
-                  ),
-                );
-              },
-              child: Card(
-                elevation: 4,
-                child: Center(
-                  child: Text(
-                    category,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+        ),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          return InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingsScreen(
+                    cityId: cityId,
+                    cityName: cityName,
+                    category: categories[index]['name'],
                   ),
                 ),
+              );
+            },
+            child: Card(
+              color: Colors.blueAccent,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    categories[index]['icon'],
+                    size: 50,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    categories[index]['name'],
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ],
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,76 +1,157 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart'; // For Google Maps & Website
 
 class PlaceDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> placeData;
   final String placeId;
+  final Map<String, dynamic> placeData;
 
-  const PlaceDetailScreen({super.key, required this.placeData, required this.placeId});
-
-  // Function to open Google Maps
-  Future<void> _openMap(String location) async {
-    final String googleMapsUrl = "https://www.google.com/maps/search/?api=1&query=$location";
-    if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
-      await launchUrl(Uri.parse(googleMapsUrl));
-    }
-  }
+  const PlaceDetailScreen({
+    super.key,
+    required this.placeId,
+    required this.placeData,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final TextEditingController reviewController = TextEditingController();
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 300,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Image.network(placeData['image'], fit: BoxFit.cover),
+      appBar: AppBar(title: Text(placeData['name'])),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Hero Image
+            Image.network(
+              placeData['image'],
+              height: 250,
+              width: double.infinity,
+              fit: BoxFit.cover,
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
+
+            Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(placeData['name'], style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  // 2. Name and Rating
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.star, color: Colors.amber),
-                      Text(" ${placeData['rating'] ?? 'N/A'}"),
+                      Text(
+                        placeData['name'],
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber),
+                          Text(" ${placeData['rating']}"),
+                        ],
+                      ),
                     ],
                   ),
-                  const Divider(),
-                  _infoRow(Icons.access_time, "Timings", placeData['timings']),
-                  _infoRow(Icons.phone, "Contact", placeData['contact']),
-                  _infoRow(Icons.language, "Website", placeData['website']),
-                  const SizedBox(height: 20),
-                  Text("About", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(placeData['description']),
-                  const SizedBox(height: 30),
-                  ElevatedButton.icon(
-                    onPressed: () => _openMap(placeData['name']),
-                    icon: Icon(Icons.directions),
-                    label: Text("Get Directions"),
-                    style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+                  const SizedBox(height: 10),
+                  Text(
+                    placeData['description'],
+                    style: const TextStyle(fontSize: 16),
+                  ),
+
+                  const Divider(height: 40),
+
+                  // 3. Info Section (Timings, Contact)
+                  const Text(
+                    "Information",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    leading: const Icon(Icons.access_time),
+                    title: Text("Timings: ${placeData['timings']}"),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.language),
+                    title: const Text("Visit Website"),
+                  ),
+
+                  const Divider(height: 40),
+
+                  // 4. Reviews Section (The "Reviews Table" View)
+                  const Text(
+                    "Reviews",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+
+                  // Review Input Field
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: reviewController,
+                          decoration: const InputDecoration(
+                            hintText: "Write a review...",
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send, color: Colors.blue),
+                        onPressed: () async {
+                          if (reviewController.text.isNotEmpty) {
+                            // Add to "reviews" collection
+                            await FirebaseFirestore.instance
+                                .collection('reviews')
+                                .add({
+                                  'placeId': placeId,
+                                  'userId':
+                                      FirebaseAuth.instance.currentUser!.uid,
+                                  'userName': FirebaseAuth
+                                      .instance
+                                      .currentUser!
+                                      .email, // Username for now
+                                  'comment': reviewController.text,
+                                  'timestamp': FieldValue.serverTimestamp(),
+                                });
+                            reviewController.clear();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+
+                  // Reviews List from Firestore
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('reviews')
+                        .where('placeId', isEqualTo: placeId)
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData)
+                        return const Center(child: CircularProgressIndicator());
+                      var reviews = snapshot.data!.docs;
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: reviews.length,
+                        itemBuilder: (context, index) {
+                          var r = reviews[index].data() as Map<String, dynamic>;
+                          return ListTile(
+                            leading: const Icon(Icons.account_circle),
+                            title: Text(r['userName'] ?? 'User'),
+                            subtitle: Text(r['comment']),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String title, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue),
-          SizedBox(width: 10),
-          Text("$title: ${value ?? 'Not available'}"),
-        ],
+          ],
+        ),
       ),
     );
   }
