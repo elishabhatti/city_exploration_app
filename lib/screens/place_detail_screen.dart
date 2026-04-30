@@ -22,49 +22,63 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   final TextEditingController _reviewController = TextEditingController();
   final String? userId = FirebaseAuth.instance.currentUser?.uid;
 
+  // Favorite Service Instance
+  final FavoriteService _favoriteService = FavoriteService();
+
   @override
   void initState() {
     super.initState();
     _checkFavoriteStatus();
   }
 
-  // Favorites Check from Firestore
+  // --- OLD LOGIC: Favorite Status Check ---
   void _checkFavoriteStatus() async {
     if (userId == null) return;
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('favorites')
-        .doc(widget.placeId)
-        .get();
-
+    bool exists = await _favoriteService.isFavorite(userId!, widget.placeId);
     if (mounted) {
-      setState(() => isFavorite = doc.exists);
+      setState(() => isFavorite = exists);
     }
   }
 
-  // Toggle Favorite logic
+  // --- OLD LOGIC: Toggle Favorite ---
   Future<void> _toggleFavorite() async {
-    if (userId == null) return;
-    final favRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('favorites')
-        .doc(widget.placeId);
-
-    if (isFavorite) {
-      await favRef.delete();
-    } else {
-      await favRef.set({
-        'name': widget.placeData['name'],
-        'image': widget.placeData['image'],
-        'addedAt': FieldValue.serverTimestamp(),
-      });
+    if (userId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please login first!")));
+      return;
     }
+    await _favoriteService.toggleFavorite(
+      userId!,
+      widget.placeId,
+      widget.placeData,
+    );
     setState(() => isFavorite = !isFavorite);
   }
 
-  // Enhanced URL Launcher
+  // --- NEW LOGIC: Get Directions (Google Maps Intent) ---
+  Future<void> _openDirections() async {
+    final String placeName = widget.placeData['name'];
+    // Direct Navigation URL
+    final String googleMapsUrl =
+        "https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(placeName)}&travelmode=driving";
+
+    final Uri uri = Uri.parse(googleMapsUrl);
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch Maps';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error opening Maps: $e")));
+    }
+  }
+
+  // --- OLD LOGIC: URL Launcher for Web/Call ---
   Future<void> _launchExternal(String urlString) async {
     if (urlString.isEmpty) return;
     final Uri uri = Uri.parse(urlString);
@@ -103,7 +117,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
               errorBuilder: (context, error, stackTrace) => Container(
                 height: 280,
                 color: Colors.grey,
-                child: Icon(Icons.broken_image, size: 80),
+                child: const Icon(Icons.broken_image, size: 80),
               ),
             ),
 
@@ -112,7 +126,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. HEADER: NAME & RATING
+                  // 2. NAME & RATING
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -164,19 +178,19 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
 
                   const Divider(height: 40),
 
-                  // 4. ACTION BUTTONS (The Enhancement)
+                  // 4. ACTION BUTTONS (Updated with Directions)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _actionIcon(
                         Icons.directions,
-                        "Map",
+                        "Directions",
                         Colors.blue,
-                        () => _launchExternal(widget.placeData['mapUrl'] ?? ''),
+                        () => _openDirections(), // Naya Function Call
                       ),
                       _actionIcon(
                         Icons.language,
-                        "Web",
+                        "Website",
                         Colors.orange,
                         () =>
                             _launchExternal(widget.placeData['website'] ?? ''),
@@ -194,7 +208,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
 
                   const Divider(height: 40),
 
-                  // 5. INFO LIST
+                  // 5. QUICK INFO
                   const Text(
                     "Quick Info",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -213,14 +227,13 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
 
                   const Divider(height: 40),
 
-                  // 6. REVIEWS SECTION (Wapis Add Kar Diya!)
+                  // 6. REVIEWS SECTION (Old Logic intact)
                   const Text(
                     "Reviews",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
 
-                  // Review Input
                   Row(
                     children: [
                       Expanded(
@@ -262,7 +275,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Reviews List
+                  // Reviews List (Old Logic intact)
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('reviews')
@@ -272,7 +285,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       if (!snapshot.hasData)
                         return const Center(child: CircularProgressIndicator());
                       var docs = snapshot.data!.docs;
-
                       if (docs.isEmpty)
                         return const Text("No reviews yet. Be the first!");
 
@@ -311,7 +323,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
-  // Helper Widget for Info
+  // Helper Widgets
   Widget _infoTile(IconData icon, String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -326,7 +338,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
-  // Helper Widget for Action Buttons
   Widget _actionIcon(
     IconData icon,
     String label,
@@ -350,5 +361,43 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
         ],
       ),
     );
+  }
+}
+
+// --- FAVORITE SERVICE ---
+class FavoriteService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> toggleFavorite(
+    String userId,
+    String placeId,
+    Map<String, dynamic> placeData,
+  ) async {
+    final favRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .doc(placeId);
+    final doc = await favRef.get();
+
+    if (doc.exists) {
+      await favRef.delete();
+    } else {
+      await favRef.set({
+        'name': placeData['name'],
+        'image': placeData['image'],
+        'addedAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<bool> isFavorite(String userId, String placeId) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .doc(placeId)
+        .get();
+    return doc.exists;
   }
 }
