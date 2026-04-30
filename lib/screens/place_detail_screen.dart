@@ -59,22 +59,29 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   // --- NEW LOGIC: Get Directions (Google Maps Intent) ---
   Future<void> _openDirections() async {
     final String placeName = widget.placeData['name'];
-    // Direct Navigation URL
+
+    // Is format ko try karein, ye zyada compatible hai
     final String googleMapsUrl =
-        "https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(placeName)}&travelmode=driving";
+        "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(placeName)}";
 
     final Uri uri = Uri.parse(googleMapsUrl);
 
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch Maps';
+      // Pehle external application (Maps App) try karein
+      bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        // Agar app nahi mili toh browser mein khol dein
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error opening Maps: $e")));
+      debugPrint("Map Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Could not open Maps. Try opening browser.")),
+      );
     }
   }
 
