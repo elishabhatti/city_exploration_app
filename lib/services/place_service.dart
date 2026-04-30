@@ -1,5 +1,5 @@
+import 'package:city_exploration_app/models/place_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/city_model.dart';
 
 class PlaceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
