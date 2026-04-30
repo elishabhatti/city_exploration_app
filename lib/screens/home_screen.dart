@@ -1,4 +1,5 @@
 import 'package:city_exploration_app/screens/category_screen.dart';
+import 'package:city_exploration_app/screens/user_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,6 +29,15 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Select City"),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+          ),
           IconButton(
             onPressed: () async => await AuthService().logout(),
             icon: const Icon(Icons.logout),
