@@ -1,5 +1,5 @@
 import 'dart:io'; // Import zaroori hai platform check ke liye
-import 'package:city_exploration_app/screens/home_screen.dart';
+import 'package:city_exploration_app/dashboard/admin_dashboard.dart';
 import 'package:city_exploration_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -67,7 +67,7 @@ class AuthGate extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          return const HomeScreen();
+          return const AdminDashboard();
         }
 
         return const LoginScreen();
