@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
 import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -12,9 +11,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final usernameController = TextEditingController();
-
   final emailController = TextEditingController();
-
   final passwordController = TextEditingController();
 
   Future<void> register() async {
@@ -27,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': usernameController.text.trim(),
         'email': emailController.text.trim(),
+        'role': 'user', // Normal user role
         'profilePic': null,
         'preferences': {},
       });
@@ -43,36 +41,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Register")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: usernameController,
-              decoration: const InputDecoration(labelText: "Username"),
+      body: Stack(
+        // Stack use kiya hidden dot ke liye
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(labelText: "Username"),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: "Email"),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: "Password"),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: register,
+                  child: const Text("Register"),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: "Email"),
+          // Hidden Dot for Admin Registration
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: GestureDetector(
+              onDoubleTap: () {
+                // Double tap se secret open hoga
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminRegisterScreen(),
+                  ),
+                );
+              },
+              child: Container(
+                width: 5,
+                height: 5,
+                color: Colors.transparent, // Nazar nahi aayega par wahan hoga
+              ),
             ),
-
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(onPressed: register, child: const Text("Register")),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
