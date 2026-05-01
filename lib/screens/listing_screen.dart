@@ -1,5 +1,6 @@
 import 'package:city_exploration_app/screens/place_detail_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ListingsScreen extends StatefulWidget {
@@ -19,30 +20,66 @@ class ListingsScreen extends StatefulWidget {
 }
 
 class _ListingsScreenState extends State<ListingsScreen> {
-  // Search query store karne ke liye variable
   String searchQuery = "";
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+
+  // --- Favorite Toggle Function ---
+  Future<void> _toggleFavorite(
+    String placeId,
+    Map<String, dynamic> placeData,
+  ) async {
+    if (userId == null) return;
+
+    final favRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .doc(placeId);
+
+    final doc = await favRef.get();
+
+    if (doc.exists) {
+      // Agar pehle se favorite hai toh remove kar do
+      await favRef.delete();
+    } else {
+      // Agar nahi hai toh add kar do
+      await favRef.set({
+        'name': placeData['name'],
+        'image': placeData['image'],
+        'city': widget.cityName,
+        'rating': placeData['rating'],
+        'category': widget.category,
+        'addedAt': DateTime.now(),
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("${widget.category} in ${widget.cityName}")),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: Text("${widget.category} in ${widget.cityName}"),
+        elevation: 0,
+        centerTitle: true,
+      ),
       body: Column(
         children: [
-          // --- Search Bar Section ---
-          Padding(
+          // --- Search Bar ---
+          Container(
             padding: const EdgeInsets.all(12.0),
+            color: Colors.white,
             child: TextField(
               decoration: InputDecoration(
                 hintText: "Search ${widget.category}...",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.grey[200],
+                fillColor: Colors.grey[100],
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                   borderSide: BorderSide.none,
                 ),
               ),
-              // Jab user type karega, state update hogi
               onChanged: (value) {
                 setState(() {
                   searchQuery = value.toLowerCase();
@@ -65,20 +102,19 @@ class _ListingsScreenState extends State<ListingsScreen> {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text("No data found."));
+                  return const Center(
+                    child: Text("No data found for this category."),
+                  );
                 }
 
-                // --- Client-side Search Filtering ---
-                // Hum data ko fetch karne ke baad search filter apply kar rahe hain
+                // Client-side filtering
                 final filteredPlaces = snapshot.data!.docs.where((doc) {
                   final name = doc['name'].toString().toLowerCase();
                   return name.contains(searchQuery);
                 }).toList();
 
                 if (filteredPlaces.isEmpty) {
-                  return const Center(
-                    child: Text("No matches found for your search."),
-                  );
+                  return const Center(child: Text("No matches found."));
                 }
 
                 return ListView.builder(
@@ -90,67 +126,127 @@ class _ListingsScreenState extends State<ListingsScreen> {
                     String placeId = filteredPlaces[index].id;
 
                     return Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      elevation: 0,
                       margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(10),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            place['image'] ?? '',
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.broken_image, size: 50),
-                          ),
-                        ),
-                        title: Text(
-                          place['name'] ?? 'Unnamed Place',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 5),
-                            Text(
-                              place['description'] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      child: InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PlaceDetailScreen(
+                              placeId: placeId,
+                              placeData: place,
                             ),
-                            const SizedBox(height: 5),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.amber,
-                                  size: 16,
+                          ),
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
+                            children: [
+                              // Image Section
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  place['image'] ?? '',
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (c, e, s) => Container(
+                                    width: 90,
+                                    height: 90,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.image_not_supported,
+                                    ),
+                                  ),
                                 ),
-                                Text(" ${place['rating'] ?? 'N/A'}"),
-                                const SizedBox(width: 15),
-                                const Icon(Icons.access_time, size: 16),
-                                Text(" ${place['timings'] ?? 'N/A'}"),
-                              ],
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PlaceDetailScreen(
-                                placeId: placeId,
-                                placeData: place,
                               ),
-                            ),
-                          );
-                        },
+                              const SizedBox(width: 12),
+                              // Content Section
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      place['name'] ?? 'Unnamed',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.star,
+                                          color: Colors.amber,
+                                          size: 16,
+                                        ),
+                                        Text(
+                                          " ${place['rating'] ?? '4.0'}",
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        const Icon(
+                                          Icons.access_time,
+                                          size: 14,
+                                          color: Colors.grey,
+                                        ),
+                                        Text(
+                                          " ${place['timings'] ?? '10am - 8pm'}",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      place['description'] ?? '',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Favorite Toggle Button
+                              StreamBuilder<DocumentSnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(userId)
+                                    .collection('favorites')
+                                    .doc(placeId)
+                                    .snapshots(),
+                                builder: (context, favSnapshot) {
+                                  bool isFavorite =
+                                      favSnapshot.hasData &&
+                                      favSnapshot.data!.exists;
+                                  return IconButton(
+                                    icon: Icon(
+                                      isFavorite
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: isFavorite
+                                          ? Colors.red
+                                          : Colors.grey,
+                                    ),
+                                    onPressed: () =>
+                                        _toggleFavorite(placeId, place),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
