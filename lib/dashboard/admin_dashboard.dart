@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:city_exploration_app/screens/login_screen.dart';
+import 'package:city_exploration_app/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,6 +34,26 @@ class _AdminDashboardState extends State<AdminDashboard>
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        // --- Logout Button Yahan Add Kiya Hai ---
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: () async {
+              // 1. Firebase se Sign Out karo
+              await AuthService().logout();
+
+              // 2. Login Screen par wapas bhejo aur stack clear karo
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
+        // ---------------------------------------
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.blueAccent,

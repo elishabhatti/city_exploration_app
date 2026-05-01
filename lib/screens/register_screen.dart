@@ -1,3 +1,4 @@
+import 'package:city_exploration_app/dashboard/admin_register_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
@@ -75,8 +76,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           // Hidden Dot for Admin Registration
           Positioned(
-            bottom: 10,
-            right: 10,
+            bottom: 50,
+            right: 50,
             child: GestureDetector(
               onDoubleTap: () {
                 // Double tap se secret open hoga
@@ -88,8 +89,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 );
               },
               child: Container(
-                width: 5,
-                height: 5,
+                width: 40,
+                height: 40,
                 color: Colors.transparent, // Nazar nahi aayega par wahan hoga
               ),
             ),
