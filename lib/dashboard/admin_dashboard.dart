@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
-// --- Admin Dashboard Main ---
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -26,45 +25,41 @@ class _AdminDashboardState extends State<AdminDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
-          "Admin Command Center",
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+          "City Guide Admin",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.blueAccent,
-          unselectedLabelColor: Colors.grey,
           indicatorColor: Colors.blueAccent,
-          indicatorWeight: 3,
           tabs: const [
-            Tab(text: "Places", icon: Icon(Icons.map_rounded)),
-            Tab(text: "Users", icon: Icon(Icons.supervised_user_circle)),
-            Tab(text: "Reviews", icon: Icon(Icons.reviews_rounded)),
+            Tab(text: "Places", icon: Icon(Icons.location_on)),
+            Tab(text: "Users", icon: Icon(Icons.group)),
+            Tab(text: "Reviews", icon: Icon(Icons.comment)),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          const ManagePlacesTab(),
-          const ManageUsersTab(),
-          const ManageReviewsTab(),
+        children: const [
+          ManagePlacesTab(),
+          ManageUsersTab(),
+          ManageReviewsTab(),
         ],
       ),
-      // FAB sirf tab 0 (Places) par dikhega logic ke liye hum controller check karte hain
       floatingActionButton: AnimatedBuilder(
         animation: _tabController,
         builder: (context, child) {
           return _tabController.index == 0
               ? FloatingActionButton.extended(
-                  onPressed: () => _openAddPlaceSheet(context),
+                  onPressed: () => _openPlaceSheet(
+                    context,
+                  ), // Null pass kiya matlab ADD mode
                   label: const Text("Add New Place"),
-                  icon: const Icon(Icons.add_location_alt_rounded),
+                  icon: const Icon(Icons.add),
                   backgroundColor: Colors.blueAccent,
                 )
               : const SizedBox.shrink();
@@ -73,196 +68,24 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  void _openAddPlaceSheet(BuildContext context) {
+  // Common function for Add and Edit
+  void _openPlaceSheet(BuildContext context, {DocumentSnapshot? doc}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder: (context) => const AddPlaceFormSheet(),
+      builder: (context) => AddPlaceFormSheet(doc: doc),
     );
   }
 }
 
-// --- Tab 1: Manage Places (Card Design) ---
-class ManagePlacesTab extends StatelessWidget {
-  const ManagePlacesTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('places').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            var doc = snapshot.data!.docs[index];
-            var data = doc.data() as Map<String, dynamic>;
-
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(12),
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    data['image'] ?? '',
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                title: Text(
-                  data['name'] ?? 'Place',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text("${data['category']} • ⭐ ${data['rating']}"),
-                trailing: IconButton(
-                  icon: const Icon(
-                    Icons.delete_sweep_rounded,
-                    color: Colors.redAccent,
-                  ),
-                  onPressed: () => _confirmDelete(context, doc.reference),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(BuildContext context, DocumentReference ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Place?"),
-        content: const Text("Are you sure? This action cannot be undone."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              ref.delete();
-              Navigator.pop(context);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// --- Tab 2: Manage Users (Simple & Clean) ---
-class ManageUsersTab extends StatelessWidget {
-  const ManageUsersTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
-          separatorBuilder: (c, i) => const Divider(),
-          itemBuilder: (context, index) {
-            var data =
-                snapshot.data!.docs[index].data() as Map<String, dynamic>;
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blue.shade50,
-                backgroundImage: data['preferences']?['profilePic'] != null
-                    ? NetworkImage(data['preferences']['profilePic'])
-                    : null,
-                child: data['preferences']?['profilePic'] == null
-                    ? const Icon(Icons.person)
-                    : null,
-              ),
-              title: Text(
-                data['username'] ?? 'Anonymous',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(data['email'] ?? 'No Email'),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  data['role'] ?? 'User',
-                  style: const TextStyle(color: Colors.green, fontSize: 12),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// --- Tab 3: Manage Reviews (Moderation Mode) ---
-class ManageReviewsTab extends StatelessWidget {
-  const ManageReviewsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collectionGroup('reviews').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            var doc = snapshot.data!.docs[index];
-            var data = doc.data() as Map<String, dynamic>;
-            return Card(
-              color: Colors.amber.shade50,
-              elevation: 0,
-              child: ListTile(
-                title: Text(
-                  "\"${data['comment']}\"",
-                  style: const TextStyle(fontStyle: FontStyle.italic),
-                ),
-                subtitle: Text("Rating: ${data['stars']} ⭐"),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.orange),
-                  onPressed: () => doc.reference.delete(),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// --- Cloudinary Add Place Form (The Logic You Needed) ---
+// --- ADD / EDIT PLACE FORM ---
 class AddPlaceFormSheet extends StatefulWidget {
-  const AddPlaceFormSheet({super.key});
+  final DocumentSnapshot? doc; // Agar doc null nahi hai, toh Edit mode hai
+  const AddPlaceFormSheet({super.key, this.doc});
 
   @override
   State<AddPlaceFormSheet> createState() => _AddPlaceFormSheetState();
@@ -271,49 +94,90 @@ class AddPlaceFormSheet extends StatefulWidget {
 class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
-  final _ratingController = TextEditingController(text: "4.5");
-  final _categoryController = TextEditingController(); // e.g. Attractions
+  final _ratingController = TextEditingController();
+  final _timingController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _mapUrlController = TextEditingController();
+  final _webController = TextEditingController();
+  final _cityNameController = TextEditingController();
+  final _categoryController = TextEditingController();
+
   File? _selectedImage;
+  String? _existingImageUrl;
   bool _isLoading = false;
 
-  Future<void> _pickAndUpload() async {
-    final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) setState(() => _selectedImage = File(image.path));
+  @override
+  void initState() {
+    super.initState();
+    // Agar Edit mode hai, toh purana data load karo
+    if (widget.doc != null) {
+      var data = widget.doc!.data() as Map<String, dynamic>;
+      _nameController.text = data['name'] ?? '';
+      _descController.text = data['description'] ?? '';
+      _ratingController.text = data['rating'] ?? '';
+      _timingController.text = data['timings'] ?? '';
+      _contactController.text = data['contact'] ?? '';
+      _mapUrlController.text = data['mapUrl'] ?? '';
+      _webController.text = data['website'] ?? '';
+      _cityNameController.text = data['cityName'] ?? '';
+      _categoryController.text = data['category'] ?? '';
+      _existingImageUrl = data['image'];
+    }
   }
 
   Future<void> _submitData() async {
-    if (_selectedImage == null || _nameController.text.isEmpty) return;
+    if (_nameController.text.isEmpty || _cityNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Name and City are required!")),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
-      // 1. Upload to Cloudinary
-      final uri = Uri.parse(
-        'https://api.cloudinary.com/v1_1/dbqrxk5ya/image/upload',
-      );
-      final request = http.MultipartRequest('POST', uri)
-        ..fields['upload_preset'] = 'city-app'
-        ..files.add(
-          await http.MultipartFile.fromPath('file', _selectedImage!.path),
+      String finalImageUrl = _existingImageUrl ?? '';
+
+      // 1. Agar nayi image select ki hai toh upload karo
+      if (_selectedImage != null) {
+        final uri = Uri.parse(
+          'https://api.cloudinary.com/v1_1/dbqrxk5ya/image/upload',
         );
+        final request = http.MultipartRequest('POST', uri)
+          ..fields['upload_preset'] = 'city-app'
+          ..files.add(
+            await http.MultipartFile.fromPath('file', _selectedImage!.path),
+          );
 
-      final response = await request.send();
-      final responseData = await response.stream.bytesToString();
-      final imageUrl = jsonDecode(responseData)['secure_url'];
+        final response = await request.send();
+        final responseData = await response.stream.bytesToString();
+        final jsonResponse = jsonDecode(responseData);
+        finalImageUrl = jsonResponse['secure_url'];
+      }
 
-      // 2. Save to Firestore using your Model structure
-      await FirebaseFirestore.instance.collection('places').add({
-        'name': _nameController.text,
-        'description': _descController.text,
-        'image': imageUrl,
-        'rating': _ratingController.text,
-        'category': _categoryController.text,
-        'cityId': 'YOUR_CITY_ID', // Isay dynamic bhi kar sakte hain
-        'timings': '9:00 AM - 6:00 PM',
-        'contact': '+92 000 0000',
-        'mapUrl': '',
-        'website': '',
-      });
+      String formattedCityId = _cityNameController.text.trim().toLowerCase();
+      Map<String, dynamic> placeData = {
+        'name': _nameController.text.trim(),
+        'description': _descController.text.trim(),
+        'image': finalImageUrl,
+        'category': _categoryController.text.trim(),
+        'rating': _ratingController.text.trim(),
+        'timings': _timingController.text.trim(),
+        'contact': _contactController.text.trim(),
+        'mapUrl': _mapUrlController.text.trim(),
+        'website': _webController.text.trim(),
+        'cityId': formattedCityId,
+        'cityName': _cityNameController.text.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (widget.doc == null) {
+        // ADD NEW
+        placeData['createdAt'] = FieldValue.serverTimestamp();
+        await FirebaseFirestore.instance.collection('places').add(placeData);
+      } else {
+        // UPDATE EXISTING
+        await widget.doc!.reference.update(placeData);
+      }
 
       Navigator.pop(context);
     } catch (e) {
@@ -325,7 +189,7 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
         left: 20,
@@ -336,47 +200,74 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              "Add New City Spot",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              widget.doc == null ? "ADD PLACE" : "EDIT PLACE",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             GestureDetector(
-              onTap: _pickAndUpload,
+              onTap: () async {
+                final picker = ImagePicker();
+                final img = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 50,
+                );
+                if (img != null)
+                  setState(() => _selectedImage = File(img.path));
+              },
               child: Container(
                 height: 150,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Colors.blue[50],
                   borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.blue[100]!),
                 ),
                 child: _selectedImage != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(15),
                         child: Image.file(_selectedImage!, fit: BoxFit.cover),
                       )
-                    : const Icon(
-                        Icons.add_a_photo,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
+                    : (_existingImageUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: Image.network(
+                                _existingImageUrl!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.add_photo_alternate_outlined,
+                              size: 50,
+                              color: Colors.blueAccent,
+                            )),
               ),
             ),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: "Place Name"),
+            const SizedBox(height: 20),
+            _adminField(_nameController, "Place Name", Icons.title),
+            _adminField(_cityNameController, "City Name", Icons.location_city),
+            _adminField(_categoryController, "Category", Icons.category),
+            _adminField(
+              _ratingController,
+              "Rating",
+              Icons.star,
+              input: TextInputType.number,
             ),
-            TextField(
-              controller: _categoryController,
-              decoration: const InputDecoration(
-                labelText: "Category (e.g. Restaurants)",
-              ),
+            _adminField(_timingController, "Hours", Icons.schedule),
+            _adminField(
+              _contactController,
+              "Phone",
+              Icons.phone,
+              input: TextInputType.phone,
             ),
-            TextField(
-              controller: _descController,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: "Description"),
+            _adminField(
+              _descController,
+              "Description",
+              Icons.info_outline,
+              lines: 3,
             ),
+            _adminField(_mapUrlController, "Map Link", Icons.map_outlined),
+            _adminField(_webController, "Website Link", Icons.public),
             const SizedBox(height: 20),
             _isLoading
                 ? const CircularProgressIndicator()
@@ -384,13 +275,219 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
                     onPressed: _submitData,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 50),
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text("Save Place"),
+                    child: Text(
+                      widget.doc == null ? "UPLOAD PLACE" : "UPDATE PLACE",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _adminField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    int lines = 1,
+    TextInputType input = TextInputType.text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextField(
+        controller: controller,
+        maxLines: lines,
+        keyboardType: input,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon),
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+}
+
+// --- MANAGE PLACES TAB (With Edit Button) ---
+class ManagePlacesTab extends StatelessWidget {
+  const ManagePlacesTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('places').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var doc = snapshot.data!.docs[index];
+            var data = doc.data() as Map<String, dynamic>;
+            return Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    data['image'] ?? '',
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => const Icon(Icons.image),
+                  ),
+                ),
+                title: Text(
+                  data['name'] ?? 'Place',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text("${data['cityName']} • ${data['category']}"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_note, color: Colors.blue),
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (context) =>
+                            AddPlaceFormSheet(doc: doc), // EDIT Mode
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.redAccent,
+                      ),
+                      onPressed: () => _confirmDelete(context, doc),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(BuildContext context, DocumentSnapshot doc) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete?"),
+        content: const Text("Are you sure you want to remove this place?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              doc.reference.delete();
+              Navigator.pop(context);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- USERS & REVIEWS TABS (Same as before) ---
+class ManageUsersTab extends StatelessWidget {
+  const ManageUsersTab({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var data =
+                snapshot.data!.docs[index].data() as Map<String, dynamic>;
+            return ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Colors.blueAccent,
+                child: Icon(Icons.person, color: Colors.white),
+              ),
+              title: Text(data['username'] ?? 'User'),
+              subtitle: Text(data['email'] ?? ''),
+              trailing: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  data['role'] ?? 'User',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class ManageReviewsTab extends StatelessWidget {
+  const ManageReviewsTab({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collectionGroup('reviews').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+        if (snapshot.data!.docs.isEmpty)
+          return const Center(child: Text("No reviews found."));
+        return ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var doc = snapshot.data!.docs[index];
+            var data = doc.data() as Map<String, dynamic>;
+            return Card(
+              child: ListTile(
+                title: Text(
+                  "\"${data['comment']}\"",
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+                subtitle: Text("Rating: ${data['stars']} ⭐"),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => doc.reference.delete(),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
