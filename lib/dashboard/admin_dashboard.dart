@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:city_exploration_app/dashboard/admin_profile_screen.dart';
 import 'package:city_exploration_app/screens/login_screen.dart';
 import 'package:city_exploration_app/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class _AdminDashboardState extends State<AdminDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -61,6 +62,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             Tab(text: "Places", icon: Icon(Icons.location_on)),
             Tab(text: "Users", icon: Icon(Icons.group)),
             Tab(text: "Reviews", icon: Icon(Icons.comment)),
+            Tab(text: "Profile", icon: Icon(Icons.person_pin)),
           ],
         ),
       ),
@@ -70,6 +72,7 @@ class _AdminDashboardState extends State<AdminDashboard>
           ManagePlacesTab(),
           ManageUsersTab(),
           ManageReviewsTab(),
+          AdminProfileTab(),
         ],
       ),
       floatingActionButton: AnimatedBuilder(
@@ -432,7 +435,6 @@ class ManagePlacesTab extends StatelessWidget {
   }
 }
 
-// --- USERS & REVIEWS TABS (Same as before) ---
 class ManageUsersTab extends StatelessWidget {
   const ManageUsersTab({super.key});
   @override
