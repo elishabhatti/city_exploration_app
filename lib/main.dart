@@ -1,3 +1,4 @@
+import 'dart:io'; // Import zaroori hai platform check ke liye
 import 'package:city_exploration_app/screens/home_screen.dart';
 import 'package:city_exploration_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +10,24 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // Agar Linux hai aur config nahi hai, toh app crash hone se bachegi
+    if (Platform.isLinux) {
+      print(
+        "Warning: Firebase is not fully configured for Linux in firebase_options.dart",
+      );
+      // Agar aapne Linux config add nahi ki, toh initializeApp() bina options ke try karein
+      await Firebase.initializeApp();
+    } else {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint("Firebase Initialization Error: $e");
+    // Fallback initialization
+    await Firebase.initializeApp();
+  }
 
   runApp(const MyApp());
 }
@@ -25,8 +41,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'City Guide',
       theme: ThemeData(
+        useMaterial3: true, // Modern UI ke liye
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: Colors.blue, // City app ke liye blue behtar lagta hai
         ),
       ),
       home: const AuthGate(),
@@ -42,6 +59,13 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // Loading state handle karna achi practice hai
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         if (snapshot.hasData) {
           return const HomeScreen();
         }
