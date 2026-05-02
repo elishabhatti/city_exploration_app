@@ -1,4 +1,5 @@
 import 'package:city_exploration_app/dashboard/admin_register_screen.dart';
+import 'package:city_exploration_app/screens/home_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
@@ -16,6 +17,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
 
   Future<void> register() async {
+    // 1. Basic validation (Recommended)
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields")),
+      );
+      return;
+    }
+
     try {
       final user = await AuthService().register(
         email: emailController.text.trim(),
@@ -25,12 +34,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': usernameController.text.trim(),
         'email': emailController.text.trim(),
-        'role': 'user', // Normal user role
+        'role': 'user',
         'profilePic': null,
         'preferences': {},
       });
 
-      Navigator.pop(context);
+      // 2. Redirect to Home Screen
+      if (mounted) {
+        // Check if widget is still in tree
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ), // Replace with your Home class name
+          (route) => false, // This removes all previous routes from the stack
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(
         context,
