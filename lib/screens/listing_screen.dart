@@ -23,13 +23,11 @@ class _ListingsScreenState extends State<ListingsScreen> {
   String searchQuery = "";
   final userId = FirebaseAuth.instance.currentUser?.uid;
 
-  // --- Favorite Toggle Function ---
   Future<void> _toggleFavorite(
     String placeId,
     Map<String, dynamic> placeData,
   ) async {
     if (userId == null) return;
-
     final favRef = FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -37,12 +35,9 @@ class _ListingsScreenState extends State<ListingsScreen> {
         .doc(placeId);
 
     final doc = await favRef.get();
-
     if (doc.exists) {
-      // Agar pehle se favorite hai toh remove kar do
       await favRef.delete();
     } else {
-      // Agar nahi hai toh add kar do
       await favRef.set({
         'name': placeData['name'],
         'image': placeData['image'],
@@ -57,34 +52,62 @@ class _ListingsScreenState extends State<ListingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white, // Pure white for that polished look
       appBar: AppBar(
-        title: Text("${widget.category} in ${widget.cityName}"),
+        backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.category,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+          ),
+        ),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // --- Search Bar ---
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            color: Colors.white,
+          // --- Premium Search Bar ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: TextField(
+              onChanged: (value) =>
+                  setState(() => searchQuery = value.toLowerCase()),
               decoration: InputDecoration(
-                hintText: "Search ${widget.category}...",
-                prefixIcon: const Icon(Icons.search),
+                hintText: "Search in ${widget.cityName}...",
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Colors.black,
+                  size: 22,
+                ),
                 filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
+                fillColor: Colors.grey[50],
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.grey.shade100,
+                    width: 1.5,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: Colors.blueAccent,
+                    width: 1.5,
+                  ),
                 ),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value.toLowerCase();
-                });
-              },
             ),
           ),
 
@@ -98,160 +121,212 @@ class _ListingsScreenState extends State<ListingsScreen> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
-                    child: Text("No data found for this category."),
+                    child: CircularProgressIndicator(color: Colors.black),
                   );
                 }
 
-                // Client-side filtering
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildEmptyState("No places found.");
+                }
+
                 final filteredPlaces = snapshot.data!.docs.where((doc) {
                   final name = doc['name'].toString().toLowerCase();
                   return name.contains(searchQuery);
                 }).toList();
 
                 if (filteredPlaces.isEmpty) {
-                  return const Center(child: Text("No matches found."));
+                  return _buildEmptyState("No matches for '$searchQuery'");
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  physics: const BouncingScrollPhysics(),
                   itemCount: filteredPlaces.length,
                   itemBuilder: (context, index) {
                     var place =
                         filteredPlaces[index].data() as Map<String, dynamic>;
                     String placeId = filteredPlaces[index].id;
 
-                    return Card(
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        side: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      child: InkWell(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PlaceDetailScreen(
-                              placeId: placeId,
-                              placeData: place,
-                            ),
+                    return GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PlaceDetailScreen(
+                            placeId: placeId,
+                            placeData: place,
                           ),
                         ),
-                        borderRadius: BorderRadius.circular(15),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Row(
-                            children: [
-                              // Image Section
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  place['image'] ?? '',
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (c, e, s) => Container(
-                                    width: 90,
-                                    height: 90,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.image_not_supported,
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.grey.shade100,
+                            width: 2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Aesthetic Image with Badge
+                            Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.network(
+                                    place['image'] ?? '',
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (c, e, s) => Container(
+                                      width: 100,
+                                      height: 100,
+                                      color: Colors.grey[200],
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Content Section
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      place['name'] ?? 'Unnamed',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
+                                Positioned(
+                                  top: 6,
+                                  left: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.7),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
                                       children: [
                                         const Icon(
-                                          Icons.star,
+                                          Icons.star_rounded,
                                           color: Colors.amber,
-                                          size: 16,
-                                        ),
-                                        Text(
-                                          " ${place['rating'] ?? '4.0'}",
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        const Icon(
-                                          Icons.access_time,
                                           size: 14,
-                                          color: Colors.grey,
                                         ),
+                                        const SizedBox(width: 2),
                                         Text(
-                                          " ${place['timings'] ?? '10am - 8pm'}",
+                                          "${place['rating'] ?? '4.0'}",
                                           style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      place['description'] ?? '',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[700],
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              // Favorite Toggle Button
-                              StreamBuilder<DocumentSnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(userId)
-                                    .collection('favorites')
-                                    .doc(placeId)
-                                    .snapshots(),
-                                builder: (context, favSnapshot) {
-                                  bool isFavorite =
-                                      favSnapshot.hasData &&
-                                      favSnapshot.data!.exists;
-                                  return IconButton(
-                                    icon: Icon(
-                                      isFavorite
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: isFavorite
-                                          ? Colors.red
-                                          : Colors.grey,
+                              ],
+                            ),
+                            const SizedBox(width: 15),
+
+                            // Info Column
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    place['name'] ?? 'Unnamed',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 17,
+                                      letterSpacing: -0.5,
                                     ),
-                                    onPressed: () =>
-                                        _toggleFavorite(placeId, place),
-                                  );
-                                },
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.access_time_rounded,
+                                        size: 14,
+                                        color: Colors.grey[400],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        place['timings'] ?? '10am - 8pm',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    place['description'] ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[500],
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+
+                            // Heart Toggle
+                            StreamBuilder<DocumentSnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(userId)
+                                  .collection('favorites')
+                                  .doc(placeId)
+                                  .snapshots(),
+                              builder: (context, favSnapshot) {
+                                bool isFav =
+                                    favSnapshot.hasData &&
+                                    favSnapshot.data!.exists;
+                                return IconButton(
+                                  onPressed: () =>
+                                      _toggleFavorite(placeId, place),
+                                  icon: Icon(
+                                    isFav
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_outline_rounded,
+                                    color: isFav
+                                        ? Colors.redAccent
+                                        : Colors.grey[300],
+                                    size: 26,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     );
                   },
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded, size: 80, color: Colors.grey[200]),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

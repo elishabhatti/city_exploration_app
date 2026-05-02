@@ -21,8 +21,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   bool isFavorite = false;
   final TextEditingController _reviewController = TextEditingController();
   final String? userId = FirebaseAuth.instance.currentUser?.uid;
-
-  // Favorite Service Instance
   final FavoriteService _favoriteService = FavoriteService();
 
   @override
@@ -31,16 +29,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     _checkFavoriteStatus();
   }
 
-  // --- OLD LOGIC: Favorite Status Check ---
   void _checkFavoriteStatus() async {
     if (userId == null) return;
     bool exists = await _favoriteService.isFavorite(userId!, widget.placeId);
-    if (mounted) {
-      setState(() => isFavorite = exists);
-    }
+    if (mounted) setState(() => isFavorite = exists);
   }
 
-  // --- OLD LOGIC: Toggle Favorite ---
   Future<void> _toggleFavorite() async {
     if (userId == null) {
       ScaffoldMessenger.of(
@@ -56,40 +50,24 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     setState(() => isFavorite = !isFavorite);
   }
 
-  // --- NEW LOGIC: Get Directions (Google Maps Intent) ---
   Future<void> _openDirections() async {
     final String placeName = widget.placeData['name'];
-
-    // Is format ko try karein, ye zyada compatible hai
-    final String googleMapsUrl =
+    final String url =
         "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(placeName)}";
-
-    final Uri uri = Uri.parse(googleMapsUrl);
-
-    try {
-      // Pehle external application (Maps App) try karein
-      bool launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-
-      if (!launched) {
-        // Agar app nahi mili toh browser mein khol dein
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (e) {
-      debugPrint("Map Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not open Maps. Try opening browser.")),
-      );
+    if (!await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    )) {
+      throw 'Could not launch Maps';
     }
   }
 
-  // --- OLD LOGIC: URL Launcher for Web/Call ---
   Future<void> _launchExternal(String urlString) async {
     if (urlString.isEmpty) return;
-    final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(
+      Uri.parse(urlString),
+      mode: LaunchMode.externalApplication,
+    )) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Could not open link")));
@@ -99,70 +77,86 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.placeData['name']),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : null,
+      backgroundColor: Colors.white,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // 1. Sleek Sliver Header
+          SliverAppBar(
+            expandedHeight: 350,
+            pinned: true,
+            stretch: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: _headerActionIcon(
+              Icons.arrow_back_ios_new,
+              () => Navigator.pop(context),
             ),
-            onPressed: _toggleFavorite,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. IMAGE SECTION
-            Image.network(
-              widget.placeData['image'],
-              height: 280,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 280,
-                color: Colors.grey,
-                child: const Icon(Icons.broken_image, size: 80),
+            actions: [
+              _headerActionIcon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                _toggleFavorite,
+                iconColor: isFavorite ? Colors.redAccent : Colors.black,
               ),
+              const SizedBox(width: 15),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Hero(
+                tag: widget.placeId,
+                child: Image.network(
+                  widget.placeData['image'],
+                  fit: BoxFit.cover,
+                ),
+              ),
+              stretchModes: const [StretchMode.zoomBackground],
             ),
+          ),
 
-            Padding(
-              padding: const EdgeInsets.all(16.0),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(25.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. NAME & RATING
+                  // 2. Title & Rating Row
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
                           widget.placeData['name'],
                           style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1,
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.amber.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.amber.withOpacity(0.2),
+                          ),
                         ),
                         child: Row(
                           children: [
                             const Icon(
-                              Icons.star,
+                              Icons.star_rounded,
                               color: Colors.amber,
                               size: 20,
                             ),
+                            const SizedBox(width: 4),
                             Text(
-                              " ${widget.placeData['rating'] ?? '0.0'}",
+                              "${widget.placeData['rating'] ?? '4.0'}",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
                           ],
@@ -170,41 +164,44 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
 
-                  // 3. DESCRIPTION
+                  // 3. Description
                   Text(
                     widget.placeData['description'] ??
                         'No description available.',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      height: 1.4,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[600],
+                      height: 1.6,
                     ),
                   ),
 
-                  const Divider(height: 40),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 25),
+                    child: Divider(color: Color(0xFFF1F1F1), thickness: 2),
+                  ),
 
-                  // 4. ACTION BUTTONS (Updated with Directions)
+                  // 4. Action Buttons (Modern Row)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _actionIcon(
-                        Icons.directions,
+                      _modernActionBtn(
+                        Icons.directions_outlined,
                         "Directions",
                         Colors.blue,
-                        () => _openDirections(), // Naya Function Call
+                        _openDirections,
                       ),
-                      _actionIcon(
-                        Icons.language,
+                      _modernActionBtn(
+                        Icons.public_outlined,
                         "Website",
                         Colors.orange,
                         () =>
                             _launchExternal(widget.placeData['website'] ?? ''),
                       ),
-                      _actionIcon(
-                        Icons.call,
-                        "Call",
+                      _modernActionBtn(
+                        Icons.phone_outlined,
+                        "Contact",
                         Colors.green,
                         () => _launchExternal(
                           "tel:${widget.placeData['contact']}",
@@ -213,139 +210,69 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     ],
                   ),
 
-                  const Divider(height: 40),
-
-                  // 5. QUICK INFO
-                  const Text(
-                    "Quick Info",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 25),
+                    child: Divider(color: Color(0xFFF1F1F1), thickness: 2),
                   ),
-                  const SizedBox(height: 10),
-                  _infoTile(
-                    Icons.access_time,
-                    "Timings",
+
+                  // 5. Quick Info Cards
+                  const Text(
+                    "Highlights",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 15),
+                  _infoCard(
+                    Icons.access_time_rounded,
+                    "Opening Hours",
                     widget.placeData['timings'],
                   ),
-                  _infoTile(
-                    Icons.phone_iphone,
-                    "Contact",
-                    widget.placeData['contact'],
+                  _infoCard(
+                    Icons.location_on_outlined,
+                    "Location Details",
+                    "Verified Destination",
                   ),
 
-                  const Divider(height: 40),
+                  const SizedBox(height: 40),
 
-                  // 6. REVIEWS SECTION (Old Logic intact)
+                  // 6. Review Section
                   const Text(
-                    "Reviews",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    "Community Reviews",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _reviewController,
-                          decoration: InputDecoration(
-                            hintText: "Add a review...",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.send, color: Colors.blue),
-                        onPressed: () async {
-                          if (_reviewController.text.isNotEmpty) {
-                            await FirebaseFirestore.instance
-                                .collection('reviews')
-                                .add({
-                                  'placeId': widget.placeId,
-                                  'userName':
-                                      FirebaseAuth.instance.currentUser?.email
-                                          ?.split('@')[0] ??
-                                      'User',
-                                  'comment': _reviewController.text,
-                                  'timestamp': FieldValue.serverTimestamp(),
-                                });
-                            _reviewController.clear();
-                            FocusScope.of(context).unfocus();
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 15),
+                  _buildReviewInput(),
                   const SizedBox(height: 20),
-
-                  // Reviews List (Old Logic intact)
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('reviews')
-                        .where('placeId', isEqualTo: widget.placeId)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData)
-                        return const Center(child: CircularProgressIndicator());
-                      var docs = snapshot.data!.docs;
-                      if (docs.isEmpty)
-                        return const Text("No reviews yet. Be the first!");
-
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          var r = docs[index].data() as Map<String, dynamic>;
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: const CircleAvatar(
-                                child: Icon(Icons.person, size: 20),
-                              ),
-                              title: Text(
-                                r['userName'] ?? 'Anonymous',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              subtitle: Text(r['comment'] ?? ''),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                  _buildReviewList(),
+                  const SizedBox(height: 50),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Helper Widgets
-  Widget _infoTile(IconData icon, String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.blueGrey),
-          const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(value ?? 'N/A'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _actionIcon(
+  // --- Helper Widgets ---
+
+  Widget _headerActionIcon(
+    IconData icon,
+    VoidCallback onTap, {
+    Color iconColor = Colors.black,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: CircleAvatar(
+        backgroundColor: Colors.white.withOpacity(0.9),
+        child: IconButton(
+          icon: Icon(icon, color: iconColor, size: 20),
+          onPressed: onTap,
+        ),
+      ),
+    );
+  }
+
+  Widget _modernActionBtn(
     IconData icon,
     String label,
     Color color,
@@ -353,28 +280,170 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   ) {
     return InkWell(
       onTap: onTap,
-      child: Column(
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        width: 100,
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey.shade100, width: 2),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoCard(IconData icon, String title, String? value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            radius: 25,
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          Icon(icon, size: 22, color: Colors.blueGrey[400]),
+          const SizedBox(width: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                value ?? 'N/A',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+
+  Widget _buildReviewInput() {
+    return TextField(
+      controller: _reviewController,
+      decoration: InputDecoration(
+        hintText: "Share your experience...",
+        filled: true,
+        fillColor: Colors.grey[50],
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.send_rounded, color: Colors.blueAccent),
+          onPressed: _submitReview,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade100, width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitReview() async {
+    if (_reviewController.text.isEmpty) return;
+    await FirebaseFirestore.instance.collection('reviews').add({
+      'placeId': widget.placeId,
+      'userName':
+          FirebaseAuth.instance.currentUser?.email?.split('@')[0] ?? 'Explorer',
+      'comment': _reviewController.text,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    _reviewController.clear();
+    FocusScope.of(context).unfocus();
+  }
+
+  Widget _buildReviewList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('reviews')
+          .where('placeId', isEqualTo: widget.placeId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const LinearProgressIndicator();
+        var docs = snapshot.data!.docs;
+        if (docs.isEmpty)
+          return Text(
+            "No reviews yet. Be the first!",
+            style: TextStyle(color: Colors.grey[400]),
+          );
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            var r = docs[index].data() as Map<String, dynamic>;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 15),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.blueAccent.withOpacity(0.1),
+                    child: Text(
+                      r['userName'][0].toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.blueAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          r['userName'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          r['comment'],
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
-// --- FAVORITE SERVICE ---
+// --- Service Class Re-used ---
 class FavoriteService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   Future<void> toggleFavorite(
     String userId,
     String placeId,
@@ -386,7 +455,6 @@ class FavoriteService {
         .collection('favorites')
         .doc(placeId);
     final doc = await favRef.get();
-
     if (doc.exists) {
       await favRef.delete();
     } else {
