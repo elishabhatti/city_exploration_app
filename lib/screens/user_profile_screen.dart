@@ -16,9 +16,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final user = FirebaseAuth.instance.currentUser;
   bool isUploading = false;
 
-  // Cloudinary Config
   static const String cloudName = 'dbqrxk5ya';
   static const String uploadPreset = 'city-app';
+
+  // --- Success Notification ---
+  void _showCleanNotification(String message, bool isError) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              message,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? Colors.redAccent : Colors.black87,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
   Future<void> _changeProfilePic() async {
     if (user == null) return;
@@ -40,8 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ..files.add(await http.MultipartFile.fromPath('file', image.path));
 
       final response = await request.send();
-      if (response.statusCode != 200)
-        throw Exception('Cloudinary upload failed');
+      if (response.statusCode != 200) throw Exception('Upload failed');
 
       final responseData = await response.stream.bytesToString();
       final jsonData = jsonDecode(responseData);
@@ -52,14 +77,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }, SetOptions(merge: true));
 
       if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Profile Updated!")));
+        _showCleanNotification("Profile picture updated successfully!", false);
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Upload Failed: $e")));
+        _showCleanNotification("Upload failed: Check connection", true);
     } finally {
       if (mounted) setState(() => isUploading = false);
     }
@@ -71,21 +92,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Scaffold(body: Center(child: Text("Login Required")));
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           "My Profile",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900),
         ),
         centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            icon: const Icon(Icons.logout_rounded, color: Colors.black54),
             onPressed: () => FirebaseAuth.instance.signOut(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
@@ -95,7 +116,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.black),
+            );
 
           final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
           final name = data['username'] ?? data['name'] ?? 'Explorer';
@@ -103,101 +126,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final profilePic = data['preferences']?['profilePic'];
 
           return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                // --- Header Section ---
+                // 1. Sleek Header Section
                 Container(
-                  color: Colors.white,
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 30),
                   child: Column(
                     children: [
                       Stack(
                         alignment: Alignment.center,
                         children: [
                           Container(
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.blue.shade100,
-                                width: 4,
+                                color: Colors.grey.shade100,
+                                width: 2,
                               ),
                             ),
                             child: CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Colors.grey[200],
+                              radius: 65,
+                              backgroundColor: Colors.grey[50],
                               backgroundImage: profilePic != null
                                   ? NetworkImage(profilePic)
                                   : null,
                               child: profilePic == null
-                                  ? const Icon(
-                                      Icons.person,
-                                      size: 60,
-                                      color: Colors.grey,
+                                  ? Icon(
+                                      Icons.person_outline,
+                                      size: 65,
+                                      color: Colors.grey[300],
                                     )
                                   : null,
                             ),
                           ),
                           if (isUploading)
                             const SizedBox(
-                              height: 120,
-                              width: 120,
-                              child: CircularProgressIndicator(),
+                              height: 130,
+                              width: 130,
+                              child: CircularProgressIndicator(
+                                color: Colors.blueAccent,
+                                strokeWidth: 3,
+                              ),
                             ),
                           Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              backgroundColor: Colors.blue,
-                              radius: 18,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt,
+                            bottom: 5,
+                            right: 5,
+                            child: GestureDetector(
+                              onTap: isUploading ? null : _changeProfilePic,
+                              child: CircleAvatar(
+                                backgroundColor: Colors.black,
+                                radius: 20,
+                                child: const Icon(
+                                  Icons.camera_alt_outlined,
                                   size: 18,
                                   color: Colors.white,
                                 ),
-                                onPressed: isUploading
-                                    ? null
-                                    : _changeProfilePic,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 20),
                       Text(
                         name,
                         style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                      Text(email, style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 4),
+                      Text(
+                        email,
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 10),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 25),
+                  child: Divider(thickness: 1.5, color: Color(0xFFF5F5F5)),
+                ),
 
-                // --- Favorites Section ---
+                // 2. Favorites Header
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.fromLTRB(25, 25, 25, 15),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.favorite, color: Colors.red),
-                      const SizedBox(width: 8),
                       const Text(
                         "My Favorites",
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         ),
+                      ),
+                      Icon(
+                        Icons.favorite_rounded,
+                        color: Colors.redAccent.withOpacity(0.8),
+                        size: 22,
                       ),
                     ],
                   ),
                 ),
 
-                // Real-time Favorites List
+                // 3. Optimized Favorites List
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('users')
@@ -206,16 +245,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       .snapshots(),
                   builder: (context, favSnapshot) {
                     if (!favSnapshot.hasData) return const SizedBox();
-
                     final favs = favSnapshot.data!.docs;
 
                     if (favs.isEmpty) {
-                      return Container(
-                        height: 150,
-                        alignment: Alignment.center,
-                        child: const Text(
-                          "No favorites added yet",
-                          style: TextStyle(color: Colors.grey),
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Text(
+                          "No favorites yet.",
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       );
                     }
@@ -223,42 +263,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     return ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: favs.length,
                       itemBuilder: (context, index) {
                         final fav = favs[index].data() as Map<String, dynamic>;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey.shade200),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.grey.shade100,
+                              width: 2,
+                            ),
                           ),
                           child: ListTile(
+                            contentPadding: const EdgeInsets.all(10),
                             leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                               child: Image.network(
                                 fav['image'] ?? '',
-                                width: 50,
-                                height: 50,
+                                width: 55,
+                                height: 55,
                                 fit: BoxFit.cover,
-                                errorBuilder: (c, e, s) =>
-                                    const Icon(Icons.image),
                               ),
                             ),
                             title: Text(
-                              fav['name'] ?? 'Place Name',
+                              fav['name'] ?? 'Place',
                               style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            subtitle: Text(fav['city'] ?? 'City'),
+                            subtitle: Text(
+                              fav['city'] ?? 'City',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 13,
+                              ),
+                            ),
                             trailing: IconButton(
                               icon: const Icon(
-                                Icons.delete_outline,
+                                Icons.delete_outline_rounded,
                                 color: Colors.redAccent,
+                                size: 22,
                               ),
                               onPressed: () => _removeFavorite(favs[index].id),
                             ),
@@ -268,7 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     );
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 30),
               ],
             ),
           );
@@ -277,7 +324,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Feature: Remove Favorite
   Future<void> _removeFavorite(String docId) async {
     await FirebaseFirestore.instance
         .collection('users')

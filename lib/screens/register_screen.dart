@@ -17,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
   bool _isLoading = false;
 
+  // --- Premium Success Dialog ---
   void _showSuccessDialog() {
     showGeneralDialog(
       context: context,
@@ -32,7 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
-                side: const BorderSide(color: Colors.blueAccent, width: 1),
+                side: const BorderSide(color: Colors.blueAccent, width: 1.5),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -45,20 +46,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 16),
                   const Text(
                     "Account Verified",
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Welcome to the community, Elisha.",
+                  Text(
+                    "Welcome to the community, ${usernameController.text.split(' ')[0]}.",
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
-                      minimumSize: const Size(double.infinity, 50),
+                      minimumSize: const Size(double.infinity, 55),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(15),
                       ),
                     ),
                     onPressed: () {
@@ -73,7 +74,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                     child: const Text(
                       "EXPLORE NOW",
-                      style: TextStyle(color: Colors.white, letterSpacing: 1.2),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
                 ],
@@ -91,13 +96,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Background Aesthetic Decor
+          // Background Aesthetic (Minimalist Circles)
           Positioned(
-            top: -100,
-            right: -50,
+            top: -80,
+            right: -80,
             child: CircleAvatar(
-              radius: 150,
-              backgroundColor: Colors.blueAccent.withOpacity(0.05),
+              radius: 120,
+              backgroundColor: Colors.blueAccent.withOpacity(0.04),
             ),
           ),
 
@@ -108,28 +113,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 60),
-                  // Header
                   const Text(
                     "Join Us.",
                     style: TextStyle(
-                      fontSize: 42,
+                      fontSize: 45,
                       fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                      letterSpacing: -1.5,
+                      letterSpacing: -2,
+                      height: 1,
                     ),
                   ),
+                  const SizedBox(height: 10),
                   Text(
-                    "Create a premium account to start your journey.",
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    "Start your premium journey today.",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[500],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
 
                   const SizedBox(height: 50),
 
-                  // Input Fields with Thin Borders (Your Style)
                   _buildPremiumField(
                     usernameController,
                     "Full Name",
-                    Icons.person_outline,
+                    Icons.person_outline_rounded,
                   ),
                   const SizedBox(height: 20),
                   _buildPremiumField(
@@ -142,13 +150,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   _buildPremiumField(
                     passwordController,
                     "Secure Password",
-                    Icons.lock_outline,
+                    Icons.lock_outline_rounded,
                     isPassword: true,
                   ),
 
                   const SizedBox(height: 40),
 
-                  // Premium Button
                   _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(color: Colors.black),
@@ -158,18 +165,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
                             height: 60,
-                            width: double.infinity,
                             decoration: BoxDecoration(
                               color: Colors.black,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                             child: const Center(
                               child: Text(
                                 "CREATE ACCOUNT",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
                                 ),
                               ),
                             ),
@@ -188,7 +194,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             TextSpan(
                               text: "Login",
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w900,
                                 color: Colors.blueAccent,
                               ),
                             ),
@@ -202,19 +208,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
 
-          // Hidden Admin Portal
+          // --- THE HIDDEN ADMIN PORTAL (Ninja Dot) ---
+          // Positioned at the very bottom right
           Positioned(
-            bottom: 20,
+            bottom: 0,
             right: 20,
             child: GestureDetector(
-              onDoubleTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminRegisterScreen()),
-              ),
+              onDoubleTap: () {
+                // Double tap to enter Admin Registration
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminRegisterScreen(),
+                  ),
+                );
+              },
               child: Container(
-                width: 40,
-                height: 40,
-                color: Colors.transparent,
+                width: 50,
+                height: 50,
+                color: Colors.transparent, // Fully invisible but clickable
               ),
             ),
           ),
@@ -236,33 +248,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
             color: Colors.black87,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         TextField(
           controller: controller,
           obscureText: isPassword,
           keyboardType: type,
-          style: const TextStyle(fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.black, size: 20),
             filled: true,
             fillColor: Colors.grey[50],
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide(color: Colors.grey.shade100, width: 2),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Colors.blueAccent,
-                width: 1.5,
-              ),
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 18),
+            contentPadding: const EdgeInsets.symmetric(vertical: 20),
           ),
         ),
       ],
@@ -291,10 +299,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _showSuccessDialog();
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
   }
 }
