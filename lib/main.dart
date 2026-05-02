@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:google_fonts/google_fonts.dart'; // <--- Poppins ke liye zaroori import
 
 import 'firebase_options.dart';
 
@@ -13,12 +14,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Agar Linux hai aur config nahi hai, toh app crash hone se bachegi
     if (Platform.isLinux) {
-      print(
-        "Warning: Firebase is not fully configured for Linux in firebase_options.dart",
-      );
-      // Agar aapne Linux config add nahi ki, toh initializeApp() bina options ke try karein
+      debugPrint("Warning: Firebase Linux configuration missing.");
       await Firebase.initializeApp();
     } else {
       await Firebase.initializeApp(
@@ -27,7 +24,6 @@ void main() async {
     }
   } catch (e) {
     debugPrint("Firebase Initialization Error: $e");
-    // Fallback initialization
     await Firebase.initializeApp();
   }
 
@@ -43,9 +39,30 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'City Guide',
       theme: ThemeData(
-        useMaterial3: true, // Modern UI ke liye
+        useMaterial3: true,
+        scaffoldBackgroundColor: Colors.white, // Aapka minimalist clean look
+        // --- GLOBAL POPPINS CONFIGURATION ---
+        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme)
+            .apply(
+              bodyColor: Colors.black, // Default text color black set kiya
+              displayColor: Colors.black,
+            ),
+
+        // Color scheme setup
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue, // City app ke liye blue behtar lagta hai
+          seedColor: Colors.blueAccent,
+          surface: Colors.white,
+        ),
+
+        // Buttons ke liye bhi Poppins font weight optimize kar di
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
       ),
       home: const AuthGate(),
@@ -61,18 +78,15 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // 1. Check if Connection is Waiting
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(child: CircularProgressIndicator(color: Colors.black)),
           );
         }
 
-        // 2. Agar User Logged In hai
         if (snapshot.hasData) {
           final String uid = snapshot.data!.uid;
 
-          // Role check karne ke liye Firestore call
           return FutureBuilder<DocumentSnapshot>(
             future: FirebaseFirestore.instance
                 .collection('users')
@@ -81,7 +95,9 @@ class AuthGate extends StatelessWidget {
             builder: (context, roleSnapshot) {
               if (roleSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+                  body: Center(
+                    child: CircularProgressIndicator(color: Colors.black),
+                  ),
                 );
               }
 
@@ -90,21 +106,16 @@ class AuthGate extends StatelessWidget {
                     roleSnapshot.data!.data() as Map<String, dynamic>;
                 String role = userData['role'] ?? 'user';
 
-                // Admin check logic
                 if (role == 'admin') {
-                  return const AdminDashboard(); // Admin screen par bhejo
+                  return const AdminDashboard();
                 } else {
-                  return const HomeScreen(); // Normal user par bhejo
+                  return const HomeScreen();
                 }
               }
-
-              // Fallback agar Firestore data na mile (Security check)
               return const LoginScreen();
             },
           );
         }
-
-        // 3. Agar User Login nahi hai
         return const LoginScreen();
       },
     );
