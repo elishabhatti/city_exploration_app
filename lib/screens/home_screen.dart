@@ -1,5 +1,6 @@
 import 'package:city_exploration_app/screens/category_screen.dart';
 import 'package:city_exploration_app/screens/faqs_screen.dart';
+import 'package:city_exploration_app/screens/login_screen.dart';
 import 'package:city_exploration_app/screens/user_profile_screen.dart';
 import 'package:city_exploration_app/screens/user_guide_screen.dart';
 import 'package:flutter/material.dart';
@@ -255,7 +256,18 @@ class HomeScreen extends StatelessWidget {
       ),
       // Floating Logout for a clean look
       floatingActionButton: FloatingActionButton.small(
-        onPressed: () async => await AuthService().logout(),
+        onPressed: () async {
+          await AuthService().logout();
+          if (context.mounted) {
+            // <--- Safety check for context
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) =>
+                  false, // Is se saari purani screens (back stack) clear ho jayengi
+            );
+          }
+        },
         backgroundColor: Colors.redAccent.withOpacity(0.1),
         elevation: 0,
         shape: CircleBorder(
