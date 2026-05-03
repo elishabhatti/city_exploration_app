@@ -100,20 +100,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (userDoc.exists) {
         String role = userDoc.get('role') ?? 'user';
-        if (mounted) {
-          setState(() => _isLoading = false);
-          _showWelcomeDialog(role);
-        }
+
+        // Check if widget is still in the tree before updating UI
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _showWelcomeDialog(role);
       } else {
         throw "User profile not found.";
       }
     } catch (e) {
+      // CRITICAL: Yahan mounted check lazmi hai
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Login Failed: $e"),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
         ),
       );
     }
