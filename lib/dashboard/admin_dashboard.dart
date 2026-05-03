@@ -384,8 +384,9 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
                   source: ImageSource.gallery,
                   imageQuality: 50,
                 );
-                if (img != null)
+                if (img != null) {
                   setState(() => _selectedImage = File(img.path));
+                }
               },
               child: Container(
                 height: 160,
@@ -400,19 +401,38 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
                         borderRadius: BorderRadius.circular(18),
                         child: Image.file(_selectedImage!, fit: BoxFit.cover),
                       )
-                    : (_existingImageUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: Image.network(
-                                _existingImageUrl!,
-                                fit: BoxFit.cover,
+                    : (_existingImageUrl != null &&
+                          _existingImageUrl!
+                              .isNotEmpty) // <--- Check empty string
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.network(
+                          _existingImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image_outlined,
+                                    color: Colors.red[300],
+                                  ),
+                                  const Text(
+                                    "Invalid Image Link",
+                                    style: TextStyle(fontSize: 10),
+                                  ),
+                                ],
                               ),
-                            )
-                          : Icon(
-                              Icons.add_a_photo_outlined,
-                              color: Colors.grey[300],
-                              size: 40,
-                            )),
+                            );
+                          },
+                        ),
+                      )
+                    : Icon(
+                        Icons.add_a_photo_outlined,
+                        color: Colors.grey[300],
+                        size: 40,
+                      ),
               ),
             ),
             const SizedBox(height: 25),
