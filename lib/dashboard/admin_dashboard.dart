@@ -276,6 +276,9 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
   final _timingController = TextEditingController();
   final _cityNameController = TextEditingController();
   final _categoryController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _mapUrlController = TextEditingController();
+  final _websiteController = TextEditingController();
 
   File? _selectedImage;
   String? _existingImageUrl;
@@ -293,6 +296,9 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
       _cityNameController.text = data['cityName'] ?? '';
       _categoryController.text = data['category'] ?? '';
       _existingImageUrl = data['image'];
+      _contactController.text = data['contact'] ?? '';
+      _mapUrlController.text = data['mapUrl'] ?? '';
+      _websiteController.text = data['website'] ?? '';
     }
   }
 
@@ -325,6 +331,9 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
         'timings': _timingController.text.trim(),
         'cityName': _cityNameController.text.trim(),
         'cityId': _cityNameController.text.trim().toLowerCase(),
+        'contact': _contactController.text.trim(),
+        'mapUrl': _mapUrlController.text.trim(),
+        'website': _websiteController.text.trim(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
@@ -410,6 +419,12 @@ class _AddPlaceFormSheetState extends State<AddPlaceFormSheet> {
             _field(_nameController, "Place Name", Icons.title),
             _field(_cityNameController, "City Name", Icons.location_city),
             _field(_categoryController, "Category", Icons.category_outlined),
+            _field(_ratingController, "Rating (e.g. 4.8)", Icons.star_outline),
+            _field(_timingController, "Timings", Icons.access_time),
+            // --- New UI Fields ---
+            _field(_contactController, "Contact Number", Icons.phone_outlined),
+            _field(_mapUrlController, "Google Maps URL", Icons.map_outlined),
+            _field(_websiteController, "Website URL", Icons.language_outlined),
             _field(_descController, "Description", Icons.notes, lines: 3),
             const SizedBox(height: 20),
             _isLoading
